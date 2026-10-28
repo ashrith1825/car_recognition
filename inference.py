@@ -7,7 +7,8 @@ from PIL import Image, UnidentifiedImageError
 from torchvision import models, transforms
 
 
-MODEL_PATH = Path(__file__).resolve().parent / "backend" / "model.pth"
+PROJECT_DIR = Path(__file__).resolve().parent
+MODEL_PATH = PROJECT_DIR / "models" / "resnet50_car.pth"
 DEVICE = torch.device("cpu")
 
 PREPROCESS = transforms.Compose(
@@ -26,11 +27,26 @@ class InvalidImageError(ValueError):
     """Raised when uploaded bytes cannot be decoded as an image."""
 
 
+def build_model(num_classes: int, pretrained: bool = False) -> nn.Module:
+    weights = models.ResNet50_Weights.DEFAULT if pretrained else None
+    model = models.resnet50(weights=weights)
+    model.fc = nn.Sequential(
+        nn.Dropout(0.5),
+        nn.Linear(model.fc.in_features, num_classes),
+    )
+    return model
+
+
 def load_model(checkpoint_path: Path = MODEL_PATH) -> tuple[nn.Module, list[str]]:
     if not checkpoint_path.is_file():
         raise FileNotFoundError(f"Model checkpoint not found: {checkpoint_path}")
 
-    checkpoint = torch.load(checkpoint_path, map_location=DEVICE, weights_only=True)
+    checkpoint = torch.load(
+        checkpoint_path,
+        map_location=DEVICE,
+        weights_only=True,
+        mmap=True,
+    )
     if not isinstance(checkpoint, dict):
         raise RuntimeError("The model checkpoint has an unsupported format.")
 
@@ -53,14 +69,11 @@ def load_model(checkpoint_path: Path = MODEL_PATH) -> tuple[nn.Module, list[str]
             raise RuntimeError("The model checkpoint contains an invalid class name.")
         class_names[index] = class_name
 
-    model = models.resnet50(weights=None)
-    model.fc = nn.Sequential(
-        nn.Dropout(0.5),
-        nn.Linear(model.fc.in_features, len(class_names)),
-    )
-    model.load_state_dict(state_dict)
+    model = build_model(len(class_names))
+    model.load_state_dict(state_dict, assign=True)
     model.to(DEVICE)
     model.eval()
+    del checkpoint
     return model, class_names
 
 

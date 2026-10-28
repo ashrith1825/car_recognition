@@ -8,15 +8,17 @@ import torch.nn as nn
 import torch.optim as optim
 from PIL import Image
 from torch.utils.data import DataLoader, Dataset, Subset
-from torchvision import datasets, models, transforms
+from torchvision import datasets, transforms
 from tqdm import tqdm
+
+from inference import build_model
 
 
 PROJECT_DIR = Path(__file__).resolve().parent
-DATA_DIR = PROJECT_DIR / "backend" / "data"
+DATA_DIR = PROJECT_DIR / "data"
 TRAIN_DIR = DATA_DIR / "train"
 VALIDATION_DIR = DATA_DIR / "val"
-MODEL_PATH = PROJECT_DIR / "backend" / "model.pth"
+MODEL_PATH = PROJECT_DIR / "models" / "resnet50_car.pth"
 
 IMAGE_SIZE = 224
 BATCH_SIZE = 64
@@ -73,16 +75,6 @@ class TransformedSubset(Dataset):
         return self.transform(image), label
 
 
-def build_model(num_classes: int, pretrained: bool = False) -> nn.Module:
-    weights = models.ResNet50_Weights.DEFAULT if pretrained else None
-    model = models.resnet50(weights=weights)
-    model.fc = nn.Sequential(
-        nn.Dropout(0.5),
-        nn.Linear(model.fc.in_features, num_classes),
-    )
-    return model
-
-
 def stratified_split(
     targets: list[int], validation_fraction: float, seed: int
 ) -> tuple[list[int], list[int]]:
@@ -106,7 +98,7 @@ def stratified_split(
     if not validation_indices:
         raise ValueError(
             "Could not create a validation split. Add at least two training "
-            "images for one or more classes, or provide a backend/data/val folder."
+            "images for one or more classes, or provide a data/val folder."
         )
     return train_indices, validation_indices
 
@@ -124,7 +116,7 @@ def make_loaders(
     if not train_dir.is_dir():
         raise FileNotFoundError(
             f"Training folder not found: {train_dir}. "
-            "Organize images as backend/data/train/<class_name>/<image>."
+            "Organize images as data/train/<class_name>/<image>."
         )
 
     train_dataset = datasets.ImageFolder(train_dir, transform=TRAIN_TRANSFORM)
@@ -138,8 +130,7 @@ def make_loaders(
         )
         if validation_dataset.class_to_idx != class_to_idx:
             raise ValueError(
-                "The class folders in backend/data/val must match "
-                "backend/data/train."
+                "The class folders in data/val must match data/train."
             )
     else:
         evaluation_source = datasets.ImageFolder(
