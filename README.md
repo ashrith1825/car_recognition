@@ -1,86 +1,51 @@
-# Car Recognition - Client-Side Inference with ONNX
+# Car Recognition
 
-This project runs entirely in the browser without needing a backend server.
+A Streamlit application that classifies an uploaded car image as one of 196 car
+models. It runs inference with the project's trained ResNet50 checkpoint; no
+separate web server or JavaScript frontend is needed.
 
-## What Changed?
+## Project files
 
-Previously, the app required:
-- Flask backend server running
-- Python installed
-- Server-side prediction handling
-
-Now it works with:
-- Pure client-side inference
-- No backend server needed
-- Static deployment to Render, Netlify, Vercel, and similar platforms
-
-## How It Works
-
-The PyTorch model model.pth has been converted to ONNX format, model.onnx, which runs directly in the browser using ONNX Runtime Web.
-
-Files generated:
-- client/public/model.onnx - the model weights and architecture
-- client/public/classes.json - class mappings for the 196 car models
-
-## Setup & Run
-
-### First Time Setup
-
-```bash
-cd client
-npm install
+```text
+.
+├── app.py
+├── inference.py
+├── requirements.txt
+└── backend/
+    └── model.pth
 ```
 
-### Run Development Server
+`app.py` provides the upload interface and displays the prediction.
+`inference.py` loads the checkpoint, prepares the image, and runs the model.
+Images are resized to 224 × 224 pixels and normalized with ImageNet mean and
+standard deviation values before inference.
 
-```bash
-npm run dev
+## Requirements
+
+- Python 3.10 or newer
+- The trained model file at `backend/model.pth`
+
+The application uses Streamlit, PyTorch, TorchVision, and Pillow. Predictions
+run on the CPU.
+
+## Run locally
+
+From the project directory, install the dependencies and start Streamlit:
+
+```shell
+pip install -r requirements.txt
+streamlit run app.py
 ```
 
-Open http://localhost:5173 in your browser.
+Open the local address printed by Streamlit. Upload a JPG, JPEG, PNG, or WebP
+image to view the predicted car model and confidence percentage.
 
-### Build for Production
+## Deploy
 
-```bash
-npm run build
-```
+For Streamlit Community Cloud, push the project to GitHub with `app.py`,
+`inference.py`, `requirements.txt`, and `backend/model.pth` included. Create an
+app for the repository and set its main file to `app.py`.
 
-This creates a dist folder with static files ready to deploy.
-
-## Deploying to Render
-
-1. Push your code to GitHub.
-2. Create a new Static Site on Render.
-3. Connect this GitHub repository.
-4. Use the build command `cd client && npm install && npm run build`.
-5. Set the publish directory to `client/dist`.
-
-## Re-Convert the Model
-
-If you retrain the model and get a new model.pth, convert it again:
-
-```bash
-cd backend
-python convert_to_onnx.py
-```
-
-This regenerates client/public/model.onnx and client/public/classes.json.
-
-## Model Performance
-
-- Model: ResNet50
-- Classes: 196 car models
-- Model size: about 91 MB
-- Inference: browser-based with WebAssembly
-
-## Original Backend
-
-The Flask backend is still available in backend/ if you want to use it:
-
-```bash
-cd backend
-python app.py
-```
-
-It is no longer required for the React app.
-"# car_recognition" 
+The model checkpoint must be present at the same relative path in the deployed
+project. The app loads it on the first prediction and reuses it for subsequent
+predictions.
