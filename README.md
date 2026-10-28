@@ -11,7 +11,12 @@ separate web server or JavaScript frontend is needed.
 ├── app.py
 ├── inference.py
 ├── requirements.txt
+├── train_model.py
+├── test.py
 └── backend/
+    ├── data/
+    │   ├── train/
+    │   └── val/  (optional)
     └── model.pth
 ```
 
@@ -25,8 +30,47 @@ standard deviation values before inference.
 - Python 3.10 or newer
 - The trained model file at `backend/model.pth`
 
-The application uses Streamlit, PyTorch, TorchVision, and Pillow. Predictions
-run on the CPU.
+The project uses Streamlit, PyTorch, TorchVision, Pillow, NumPy, and tqdm. The
+app runs predictions on the CPU. Training uses a CUDA GPU when available.
+
+## Training
+
+Organize the labeled images into class-named directories. For example:
+
+```text
+backend/data/
+├── train/
+│   ├── Audi R8 Coupe 2012/
+│   │   └── image1.jpg
+│   └── BMW 3 Series Sedan 2012/
+│       └── image2.jpg
+└── val/  (optional; use the same class directories as train)
+```
+
+If `backend/data/val` is not present, the training script creates a
+class-stratified validation split from the training images. The test script
+accepts an individual image path for prediction.
+
+Train the classifier from the project directory:
+
+```shell
+python train_model.py
+```
+
+By default, training uses ResNet50 with 224 × 224 image inputs, runs for 40
+epochs, and saves the best validation checkpoint to `backend/model.pth`. This
+is the checkpoint used by `app.py`. ImageNet weights are used to initialize
+training and may be downloaded the first time. Use `--no-pretrained` to train
+without downloading them.
+
+To classify an image with the saved checkpoint, run:
+
+```shell
+python test.py path/to/car-image.jpg
+```
+
+Use `python train_model.py --help` or `python test.py --help` to see available
+options.
 
 ## Run locally
 
